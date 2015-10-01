@@ -25,18 +25,26 @@ def find_domain_name(path):
         return path[:path.find('/')], protocol
 
 
-def get_attribute(element, attr):
-    if attr == 'content':
-        return element.string.strip()
+def get_value(element, conf):
+    if 'attribute' in conf:
+        return element[conf['attribute']]
     else:
-        return element[attr]
+        return element.string.strip()
+
+def select(soup, conf, select_one=False):
+    if select_one:
+        selected_element = soup.select_one(conf['css-selector'])
+        return get_value(selected_element, conf)
+    selected_elements = soup.select(conf['css-selector'])
+    values = []
+    for element in selected_elements:
+        values.append(get_value(element, conf))
+    return values
 
 
 def process_page(conf, name='.', address=None):
     if address is None:
         address = conf['address']
-    selector = conf['selector']
-    attr = conf['attr']
     download = 'download' in conf and conf['download']
 
     domain_name, protocol = find_domain_name(address)
@@ -44,17 +52,20 @@ def process_page(conf, name='.', address=None):
     soup = BeautifulSoup(open('tmp').read(), 'html.parser')
     os.system('rm -f tmp')
     os.system('mkdir -p "%s"' % name)
+
     if 'name' in conf:
-        name += '/' + conf['name']
-    elif 'name-selector' in conf:
-        name += '/' + get_attribute(soup.select_one(conf['name-selector']), conf['name-attr'])
-    for item in soup.select(selector):
-        if item[attr].startswith('//'):
-            full_url = protocol + ':' + get_attribute(item, attr)
-        elif item[attr].startswith('/'):
-            full_url = protocol + '://' + domain_name + get_attribute(item, attr)
+        if isinstance(conf['name'], dict):
+            name += '/' + select(soup, conf['name'], select_one=True)
         else:
-            full_url = get_attribute(item, attr)
+            name += '/' + conf['name']
+
+    for item in select(soup, conf['item']):
+        if item.startswith('//'):
+            full_url = protocol + ':' + item
+        elif item.startswith('/'):
+            full_url = protocol + '://' + domain_name + item
+        else:
+            full_url = item
         if download:
             os.system('wget "%s" -P "%s"' % (full_url, name))
         if 'follow' in conf:
