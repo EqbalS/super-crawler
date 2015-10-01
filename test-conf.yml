@@ -1,0 +1,11 @@
+deviantart:
+    address: http://www.deviantart.com/tag/batman
+    item:
+        css-selector: span.shadow > a.thumb
+        attribute: href
+    name: deviantart
+    follow:
+        item:
+            css-selector: div.dev-page-view > div.dev-view-main-content > div.dev-view-deviation img.dev-content-full
+            attribute: src
+        download: true
