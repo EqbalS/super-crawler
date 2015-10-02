@@ -39,16 +39,24 @@ def select(soup, conf, select_one=False):
     return values
 
 
+def get_full_url(item, domain_name, protocol):
+    if item.startswith('//'):
+        return protocol + ':' + item
+    if item.startswith('/'):
+        return protocol + '://' + domain_name + item
+    return item
+
+
 def process_page(conf, name='.', address=None):
     if address is None:
         address = conf['address']
-    download = 'download' in conf and conf['download']
     wget_extra_args = ''
     if 'wget-extra-args' in conf:
         wget_extra_args = conf['wget-extra-args']
 
     domain_name, protocol = find_domain_name(address)
-    os.system('wget %s "%s" -O tmp' % (wget_extra_args, address))
+    print 'Getting %s' % address
+    os.system('wget %s "%s" -O tmp 2> /dev/null' % (wget_extra_args, address))
     soup = BeautifulSoup(open('tmp').read(), 'html.parser')
     os.system('rm -f tmp')
     os.system('mkdir -p "%s"' % name)
@@ -60,17 +68,16 @@ def process_page(conf, name='.', address=None):
             name += '/' + conf['name']
 
     for item in select(soup, conf['item']):
-        if item.startswith('//'):
-            full_url = protocol + ':' + item
-        elif item.startswith('/'):
-            full_url = protocol + '://' + domain_name + item
-        else:
-            full_url = item
-        if download:
-            os.system('wget %s "%s" -P "%s"' % (wget_extra_args, full_url, name))
+        if 'download' in conf and conf['download']:
+            full_url = get_full_url(item, domain_name, protocol)
+            print 'Downloading %s -> %s' % (full_url, name)
+            os.system('wget %s "%s" -P "%s" 2> /dev/null' % (wget_extra_args, full_url, name))
+        if 'print' in conf and conf['print']:
+            print item
         if 'follow' in conf:
-            process_page(conf['follow'], name, address=full_url)
+            process_page(conf['follow'], name, address=get_full_url(item, domain_name, protocol))
         if 'recurse-condition-regex' in conf:
+            full_url = get_full_url(item, domain_name, protocol)
             pattern = re.compile(conf['recurse-condition-regex'])
             if pattern.match(full_url) is None:
                 process_page(conf['recurse-final'], name, address=full_url)
