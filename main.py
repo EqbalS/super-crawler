@@ -28,6 +28,7 @@ def get_value(element, conf):
     else:
         return element.contents[0].strip()
 
+
 def select(soup, conf, select_one=False):
     if select_one:
         selected_element = soup.select_one(conf['css-selector'])
