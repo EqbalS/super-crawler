@@ -36,16 +36,48 @@ def select(soup, conf, select_one=False):
     selected_elements = soup.select(conf['css-selector'])
     values = []
     for element in selected_elements:
-        values.append(get_value(element, conf))
+        value = get_value(element, conf)
+        if 'regex-exclude' in conf:
+            pattern = re.compile(conf['regex-exclude'])
+            if pattern.match(value) is not None:
+                continue
+        if 'regex-filter' in conf:
+            pattern = re.compile(conf['regex-filter'])
+            if pattern.match(value) is None:
+                continue
+        values.append(value)
     return values
 
 
-def get_full_url(item, domain_name, protocol):
+def get_full_url(address, item, domain_name, protocol):
     if item.startswith('//'):
         return protocol + ':' + item
     if item.startswith('/'):
         return protocol + '://' + domain_name + item
-    return item
+    if item.startswith('http://') or item.startswith('https://'):
+        return item
+    else:
+        if not address.endswith('/'):
+            address += '/'
+        return address + item
+
+
+def do_action(conf, name, wget_extra_args, address, item, domain_name, protocol):
+    if 'download' in conf and conf['download']:
+        full_url = get_full_url(address, item, domain_name, protocol)
+        print 'Downloading %s -> %s' % (full_url, name)
+        os.system('wget %s "%s" -P "%s" 2> /dev/null' % (wget_extra_args, full_url, name))
+    if 'print' in conf and conf['print']:
+        print item
+    if 'follow' in conf:
+        process_page(conf['follow'], name, address=get_full_url(address, item, domain_name, protocol))
+    if 'recurse-condition-regex' in conf:
+        full_url = get_full_url(address, item, domain_name, protocol)
+        pattern = re.compile(conf['recurse-condition-regex'])
+        if pattern.match(full_url) is None:
+            do_action(conf['recurse-final'], name, wget_extra_args, address, item, domain_name, protocol)
+        else:
+            process_page(conf, name, address=full_url)
 
 
 def process_page(conf, name='.', address=None):
@@ -69,21 +101,7 @@ def process_page(conf, name='.', address=None):
             name += '/' + conf['name']
 
     for item in select(soup, conf['item']):
-        if 'download' in conf and conf['download']:
-            full_url = get_full_url(item, domain_name, protocol)
-            print 'Downloading %s -> %s' % (full_url, name)
-            os.system('wget %s "%s" -P "%s" 2> /dev/null' % (wget_extra_args, full_url, name))
-        if 'print' in conf and conf['print']:
-            print item
-        if 'follow' in conf:
-            process_page(conf['follow'], name, address=get_full_url(item, domain_name, protocol))
-        if 'recurse-condition-regex' in conf:
-            full_url = get_full_url(item, domain_name, protocol)
-            pattern = re.compile(conf['recurse-condition-regex'])
-            if pattern.match(full_url) is None:
-                process_page(conf['recurse-final'], name, address=full_url)
-            else:
-                process_page(conf, name, address=full_url)
+        do_action(conf, name, wget_extra_args, address, item, domain_name, protocol)
 
 
 def main():
