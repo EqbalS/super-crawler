@@ -43,9 +43,12 @@ def process_page(conf, name='.', address=None):
     if address is None:
         address = conf['address']
     download = 'download' in conf and conf['download']
+    wget_extra_args = ''
+    if 'wget-extra-args' in conf:
+        wget_extra_args = conf['wget-extra-args']
 
     domain_name, protocol = find_domain_name(address)
-    os.system('wget "%s" -O tmp' % address)
+    os.system('wget %s "%s" -O tmp' % (wget_extra_args, address))
     soup = BeautifulSoup(open('tmp').read(), 'html.parser')
     os.system('rm -f tmp')
     os.system('mkdir -p "%s"' % name)
@@ -64,7 +67,7 @@ def process_page(conf, name='.', address=None):
         else:
             full_url = item
         if download:
-            os.system('wget "%s" -P "%s"' % (full_url, name))
+            os.system('wget %s "%s" -P "%s"' % (wget_extra_args, full_url, name))
         if 'follow' in conf:
             process_page(conf['follow'], name, address=full_url)
         if 'recurse-condition-regex' in conf:
