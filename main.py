@@ -1,11 +1,8 @@
-#!/usr/bin/env python
 import os
 import re
 import sys
 import yaml
 from bs4 import BeautifulSoup
-
-conf_path = sys.argv[1]
 
 
 def read_conf(conf_path):
@@ -78,7 +75,7 @@ def process_page(conf, name='.', address=None):
                 process_page(conf, name, address=full_url)
 
 
-if __name__ == '__main__':
-    conf = read_conf(conf_path)
+def main():
+    conf = read_conf(sys.argv[1])
     for page in conf:
         process_page(conf[page])
