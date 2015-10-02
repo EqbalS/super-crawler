@@ -26,7 +26,7 @@ def get_value(element, conf):
     if 'attribute' in conf:
         return element[conf['attribute']]
     else:
-        return element.string.strip()
+        return element.contents[0].strip()
 
 def select(soup, conf, select_one=False):
     if select_one:
